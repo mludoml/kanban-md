@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,9 @@ import (
 // timeStatsChrome is the framed project time line above the status bar,
 // shown when any status tracks time: border, line, border.
 const timeStatsChrome = 3
+
+// titleNumber finds the number in a parent title for the {num} label placeholder.
+var titleNumber = regexp.MustCompile(`\d+`)
 
 // runningMark prefixes a card's work time while a timer runs.
 const runningMark = "▸"
@@ -185,7 +189,8 @@ func (b *Board) renderGroupCard(t *task.Task, group int, active bool, content st
 	return groupTopBorder(border, label, width, borderColor, color) + "\n" + body
 }
 
-// groupLabel expands tui.parent_label for a parent: {id} and {title}.
+// groupLabel expands tui.parent_label for a parent: {id}, {title}, and {num}
+// (the first number in the title, e.g. 5 for "Wave 5: login"; else the ID).
 func (b *Board) groupLabel(parentID int) string {
 	title := ""
 	for _, t := range b.allTasks {
@@ -194,7 +199,12 @@ func (b *Board) groupLabel(parentID int) string {
 			break
 		}
 	}
-	return strings.NewReplacer("{id}", strconv.Itoa(parentID), "{title}", title).Replace(b.cfg.TUI.ParentLabel)
+	id := strconv.Itoa(parentID)
+	num := titleNumber.FindString(title)
+	if num == "" {
+		num = id
+	}
+	return strings.NewReplacer("{id}", id, "{title}", title, "{num}", num).Replace(b.cfg.TUI.ParentLabel)
 }
 
 // groupTopBorder draws "╭─ label ────╮" exactly width cells wide.

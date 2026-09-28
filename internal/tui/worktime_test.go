@@ -38,7 +38,7 @@ func setupWorkTimeBoard(t *testing.T, width, height int) *tui.Board {
 			cfg.Statuses[i].ShowDuration = &show
 		}
 	}
-	cfg.TUI.ParentLabel = "{title} (#{id})"
+	cfg.TUI.ParentLabel = "wave-#{num} ({title}, #{id})"
 	if err := cfg.Save(); err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestWorkTime_GroupCardsKeepGeometry(t *testing.T) {
 				t.Fatalf("%dx%d: line %d is %d wide: %q", size[0], size[1], i, w, ansi.Strip(l))
 			}
 		}
-		if size[0] >= 160 && !strings.Contains(ansi.Strip(v), "─ Fala 5 (#1) ─") {
+		if size[0] >= 160 && !strings.Contains(ansi.Strip(v), "─ wave-#5 (Fala 5, #1) ─") {
 			t.Fatalf("%dx%d: missing group label:\n%s", size[0], size[1], ansi.Strip(v))
 		}
 	}
