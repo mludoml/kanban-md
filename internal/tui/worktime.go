@@ -206,8 +206,9 @@ func groupTopBorder(border lipgloss.Border, label string, width int, borderColor
 	}
 	const lead = 1 // one border cell before the label
 	text := ""
-	if inner > lead+2 { //nolint:mnd // room for " x "
-		text = truncate(" "+label+" ", inner-lead)
+	// Keep a space on both sides of the label and at least one border cell after it.
+	if room := inner - lead - 3; room > 0 { //nolint:mnd // two spaces + trailing border cell
+		text = " " + truncate(label, room) + " "
 	}
 	fill := inner - lead - lipgloss.Width(text)
 	return edge.Render(border.TopLeft+strings.Repeat(border.Top, lead)) +
