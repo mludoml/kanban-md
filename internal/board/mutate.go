@@ -266,6 +266,7 @@ func Create(cfg *config.Config, params CreateParams, now time.Time) (*CreateResu
 	if err := applyCreateParams(cfg, t, params, now); err != nil {
 		return nil, err
 	}
+	task.TrackStatusChange(t, "", t.Status, cfg, now)
 
 	// Validate dependency references.
 	if err := validateDeps(cfg, t); err != nil {
@@ -419,6 +420,8 @@ func Edit(cfg *config.Config, id int, claimant string, release bool,
 		return nil, err
 	}
 
+	task.TrackStatusChange(t, oldStatus, t.Status, cfg, now)
+	task.TrackBlockChange(t, wasBlocked, cfg, now)
 	t.Updated = now
 
 	newPath, err := task.WriteAndRename(path, t, oldTitle)

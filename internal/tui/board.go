@@ -76,7 +76,8 @@ type Board struct {
 	cfg             *config.Config
 	allTasks        []*task.Task // includes archived tasks for explicit relationship context
 	tasks           []*task.Task
-	unfilteredTasks []*task.Task // active tasks before the board search filter is applied
+	unfilteredTasks []*task.Task         // active tasks before the board search filter is applied
+	childrenOf      map[int][]*task.Task // subtasks by parent ID, from allTasks
 	columns         []column
 	activeCol       int
 	activeRow       int
@@ -940,6 +941,12 @@ func (b *Board) loadTasks() {
 	}
 	b.err = nil
 	b.allTasks = tasks
+	b.childrenOf = make(map[int][]*task.Task)
+	for _, t := range tasks {
+		if t.Parent != nil {
+			b.childrenOf[*t.Parent] = append(b.childrenOf[*t.Parent], t)
+		}
+	}
 
 	// Keep an unfiltered active-task collection for relationship context in
 	// detail views. The visible collection additionally applies board search.
@@ -1069,6 +1076,9 @@ func (b *Board) chromeHeight() int {
 	h := boardChrome
 	if b.err != nil {
 		h += errorChrome
+	}
+	if b.timeTracked() {
+		h += timeStatsChrome
 	}
 	return h
 }
@@ -1520,6 +1530,9 @@ func (b *Board) withStatusBar(boardView string) string {
 	if b.view == viewSearch {
 		bottom = b.renderSearchBar()
 	}
+	if b.timeTracked() {
+		return lipgloss.JoinVertical(lipgloss.Left, boardView, "", b.renderTimeStats(), bottom)
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, boardView, "", bottom)
 }
 
@@ -1879,6 +1892,9 @@ func (b *Board) renderCard(t *task.Task, active bool, width int) string {
 	if active {
 		style = activeCardStyle
 	}
+	if group := b.cardGroup(t); group > 0 {
+		return b.renderGroupCard(t, group, active, content, width)
+	}
 
 	return style.Width(width - 2).Render(content) //nolint:mnd // border width
 }
@@ -1947,9 +1963,13 @@ func (b *Board) cardContentLines(t *task.Task, width int) []string {
 	}
 
 	if b.cfg.StatusShowDuration(t.Status) {
-		ageDur := b.now().Sub(t.Updated)
-		age := humanDuration(ageDur)
-		details = append(details, b.ageStyle(ageDur).Render(age))
+		if b.timeTracked() {
+			details = append(details, b.cardWorkTime(t))
+		} else {
+			ageDur := b.now().Sub(t.Updated)
+			age := humanDuration(ageDur)
+			details = append(details, b.ageStyle(ageDur).Render(age))
+		}
 	}
 
 	contentLines = append(contentLines, strings.Join(details, " "))
@@ -2247,13 +2267,14 @@ func (b *Board) viewDetail() string {
 func (b *Board) detailLines(t *task.Task) []string {
 	parent := board.FindParent(b.allTasks, t)
 	children := board.SummarizeChildren(b.unfilteredTasks, t.ID, b.cfg, false)
-	return detailLinesWithRelations(t, parent, children, b.width)
+	return detailLinesWithRelations(t, parent, children, b.detailWorkLines(t), b.width)
 }
 
 func detailLinesWithRelations(
 	t *task.Task,
 	parent *board.ParentTask,
 	children board.ChildSummary,
+	workLines []string,
 	width int,
 ) []string {
 	var lines []string
@@ -2274,6 +2295,7 @@ func detailLinesWithRelations(
 	lines = append(lines, detailLabelStyle.Render("Priority:")+"  "+t.Priority)
 	lines = append(lines, detailMetadataLines(t)...)
 	lines = append(lines, detailTimestampLines(t)...)
+	lines = append(lines, workLines...)
 	if t.Blocked {
 		lines = append(lines, "")
 		lines = append(lines, errorStyle.Render("BLOCKED: "+t.BlockReason))

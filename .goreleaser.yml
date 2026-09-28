@@ -27,26 +27,10 @@ archives:
       - goos: windows
         formats:
           - zip
-brews:
-  - ids:
-      - default
-    repository:
-      owner: antopolskiy
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    name: kanban-md
-    homepage: https://github.com/antopolskiy/kanban-md
-    description: A file-based Kanban tool powered by Markdown
-    license: MIT
-    install: |
-      bin.install "kanban-md"
-      bin.install_symlink bin/"kanban-md" => "kbmd"
-      generate_completions_from_executable(bin/"kanban-md", "completion")
-      generate_completions_from_executable(bin/"kbmd", "completion")
 release:
   github:
   name_template: "{{.Version}}"
-  prerelease: auto
+  prerelease: false
   mode: append
 changelog:
   disable: true

@@ -29,6 +29,11 @@ type Task struct {
 	ClaimedAt   *time.Time `yaml:"claimed_at,omitempty" json:"claimed_at,omitempty"`
 	Class       string     `yaml:"class,omitempty" json:"class,omitempty"`
 
+	// TimeSpent is the tracked work time per status (see config time_tracking).
+	TimeSpent map[string]Duration `yaml:"time_spent,omitempty" json:"time_spent,omitempty"`
+	// TimerStarted is set while the timer runs; it counts toward Status.
+	TimerStarted *time.Time `yaml:"timer_started,omitempty" json:"timer_started,omitempty"`
+
 	// Body is the markdown content below the frontmatter (not in YAML).
 	Body string `yaml:"-" json:"body,omitempty"`
 

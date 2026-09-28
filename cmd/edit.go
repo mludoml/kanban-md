@@ -49,6 +49,7 @@ func init() {
 	editCmd.Flags().String("claim", "", "claim task for an agent")
 	editCmd.Flags().Bool("release", false, "release claim on task")
 	editCmd.Flags().String("class", "", "set class of service")
+	editCmd.Flags().String("timer", "", "start or stop the work timer in a time-tracked status (start|stop)")
 	rootCmd.AddCommand(editCmd)
 }
 
@@ -119,7 +120,41 @@ func applyEditChanges(cmd *cobra.Command, t *task.Task, cfg *config.Config, clai
 	} else if c {
 		changed = true
 	}
+	if c, timerErr := applyTimerFlag(cmd, t, cfg); timerErr != nil {
+		return false, timerErr
+	} else if c {
+		changed = true
+	}
 	return changed, nil
+}
+
+// applyTimerFlag handles --timer start|stop.
+func applyTimerFlag(cmd *cobra.Command, t *task.Task, cfg *config.Config) (bool, error) {
+	if !cmd.Flags().Changed("timer") {
+		return false, nil
+	}
+	if cmd.Flags().Changed("status") {
+		return false, clierr.New(clierr.InvalidInput, "cannot use --timer and --status together")
+	}
+	v, _ := cmd.Flags().GetString("timer")
+	now := time.Now()
+	switch v {
+	case "start":
+		started, err := task.StartTimer(t, cfg, now)
+		if err != nil {
+			return false, err
+		}
+		if !started {
+			return false, clierr.Newf(clierr.StatusConflict, "timer of task #%d is already running", t.ID)
+		}
+	case "stop":
+		if !task.StopTimer(t, now) {
+			return false, clierr.Newf(clierr.StatusConflict, "timer of task #%d is not running", t.ID)
+		}
+	default:
+		return false, clierr.Newf(clierr.InvalidInput, "invalid --timer %q: use start or stop", v)
+	}
+	return true, nil
 }
 
 // applyClaimFlags handles --claim and --release flags.

@@ -66,6 +66,10 @@ type TUIConfig struct {
 	// NarrowThreshold is the terminal width below which the TUI renders a
 	// single column at a time; 0 = automatic, 1 effectively disables it.
 	NarrowThreshold int `yaml:"narrow_threshold,omitempty"`
+	// ParentLabel groups subtasks visually: when set, a task with a parent (and
+	// the parent itself) gets a border colored per parent and this label, with
+	// "{id}" replaced by the parent ID, in the top border. Empty = off.
+	ParentLabel string `yaml:"parent_label,omitempty"`
 }
 
 // StatusConfig defines a status column and its enforcement rules.
@@ -73,6 +77,10 @@ type StatusConfig struct {
 	Name         string `yaml:"name" json:"name"`
 	RequireClaim bool   `yaml:"require_claim,omitempty" json:"require_claim,omitempty"`
 	ShowDuration *bool  `yaml:"show_duration,omitempty" json:"show_duration,omitempty"`
+	// TimeTracking accumulates work time while a task sits in this status:
+	// "auto" runs the timer for the whole stay, "manual" only between an
+	// explicit timer start and stop. Empty = not tracked.
+	TimeTracking string `yaml:"time_tracking,omitempty" json:"time_tracking,omitempty"`
 }
 
 // UnmarshalYAML allows StatusConfig to be parsed from either a plain string
@@ -171,6 +179,33 @@ func (c *Config) StatusShowDuration(status string) bool {
 	return true
 }
 
+// Time tracking modes for StatusConfig.TimeTracking.
+const (
+	TimeTrackingAuto   = "auto"
+	TimeTrackingManual = "manual"
+)
+
+// StatusTimeTracking returns the time tracking mode of a status ("" if untracked).
+func (c *Config) StatusTimeTracking(status string) string {
+	for _, s := range c.Statuses {
+		if s.Name == status {
+			return s.TimeTracking
+		}
+	}
+	return ""
+}
+
+// TrackedStatuses returns the names of time-tracked statuses in board order.
+func (c *Config) TrackedStatuses() []string {
+	var names []string
+	for _, s := range c.Statuses {
+		if s.TimeTracking != "" {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
+
 // Validate checks the config for errors.
 func (c *Config) Validate() error {
 	if c.Version != CurrentVersion {
@@ -212,6 +247,14 @@ func (c *Config) Validate() error {
 	}
 	if err := c.validateTUI(); err != nil {
 		return err
+	}
+	for _, s := range c.Statuses {
+		switch s.TimeTracking {
+		case "", TimeTrackingAuto, TimeTrackingManual:
+		default:
+			return fmt.Errorf("%w: status %q: time_tracking must be %q, %q or empty",
+				ErrInvalid, s.Name, TimeTrackingAuto, TimeTrackingManual)
+		}
 	}
 	if c.NextID < 1 {
 		return fmt.Errorf("%w: next_id must be >= 1", ErrInvalid)

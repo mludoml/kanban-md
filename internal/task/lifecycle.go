@@ -10,9 +10,11 @@ import (
 //   - Sets Started on first move out of initial status (never overwrites).
 //   - Sets Completed on move to terminal status; also sets Started if nil.
 //   - Clears Completed when moving away from terminal status (reopening).
+//   - Moves the work timer along (see TrackStatusChange).
 func UpdateTimestamps(t *Task, oldStatus, newStatus string, cfg *config.Config) {
 	now := time.Now()
 	initialStatus := cfg.StatusNames()[0]
+	TrackStatusChange(t, oldStatus, newStatus, cfg, now)
 
 	// Set Started on first move out of initial status (never overwrite).
 	if t.Started == nil && oldStatus == initialStatus && newStatus != initialStatus {

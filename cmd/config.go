@@ -190,6 +190,54 @@ func addExtendedConfigAccessors(accessors map[string]configAccessor) {
 	accessors["tui.age_thresholds"] = configAccessor{
 		get: func(c *config.Config) any { return c.TUI.AgeThresholds },
 	}
+	accessors["tui.parent_label"] = configAccessor{
+		get:      func(c *config.Config) any { return c.TUI.ParentLabel },
+		set:      func(c *config.Config, v string) error { c.TUI.ParentLabel = v; return nil },
+		writable: true,
+	}
+}
+
+// lookupConfigAccessor resolves a static key or a per-status key
+// "statuses.<name>.show_duration" / "statuses.<name>.time_tracking".
+func lookupConfigAccessor(cfg *config.Config, key string) (configAccessor, bool) {
+	if acc, ok := configAccessors()[key]; ok {
+		return acc, true
+	}
+	rest, ok := strings.CutPrefix(key, "statuses.")
+	if !ok {
+		return configAccessor{}, false
+	}
+	i := strings.LastIndex(rest, ".")
+	if i < 0 {
+		return configAccessor{}, false
+	}
+	name, field := rest[:i], rest[i+1:]
+	idx := config.IndexOf(cfg.StatusNames(), name)
+	if idx < 0 {
+		return configAccessor{}, false
+	}
+	switch field {
+	case "show_duration":
+		return configAccessor{
+			get: func(c *config.Config) any { return c.StatusShowDuration(name) },
+			set: func(c *config.Config, v string) error {
+				b, err := strconv.ParseBool(v)
+				if err != nil {
+					return clierr.Newf(clierr.InvalidInput, "invalid %s %q: must be true or false", key, v)
+				}
+				c.Statuses[idx].ShowDuration = &b
+				return nil
+			},
+			writable: true,
+		}, true
+	case "time_tracking":
+		return configAccessor{
+			get:      func(c *config.Config) any { return c.StatusTimeTracking(name) },
+			set:      func(c *config.Config, v string) error { c.Statuses[idx].TimeTracking = v; return nil },
+			writable: true,
+		}, true
+	}
+	return configAccessor{}, false
 }
 
 // allConfigKeys returns config keys in display order.
@@ -211,6 +259,7 @@ func allConfigKeys() []string {
 		"tui.hide_empty_columns",
 		"tui.narrow_threshold",
 		"tui.age_thresholds",
+		"tui.parent_label",
 		"next_id",
 	}
 }
@@ -246,8 +295,7 @@ func runConfigGet(_ *cobra.Command, args []string) error {
 	}
 
 	key := args[0]
-	accessors := configAccessors()
-	acc, ok := accessors[key]
+	acc, ok := lookupConfigAccessor(cfg, key)
 	if !ok {
 		return clierr.Newf(clierr.InvalidInput, "unknown config key %q", key)
 	}
@@ -269,8 +317,7 @@ func runConfigSet(_ *cobra.Command, args []string) error {
 	}
 
 	key, value := args[0], args[1]
-	accessors := configAccessors()
-	acc, ok := accessors[key]
+	acc, ok := lookupConfigAccessor(cfg, key)
 	if !ok {
 		return clierr.Newf(clierr.InvalidInput, "unknown config key %q", key)
 	}
