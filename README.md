@@ -11,14 +11,14 @@
 
 > **Fork `mludoml/kanban-md` (branch `orch`, releases `vX.Y.Z-orch.N`)** — upstream kanban-md plus two TUI features used by herdr-orch (`orch board`):
 >
-> - **Work time tracking.** Per status `time_tracking: auto` (the timer runs for the whole stay; paused while the task is blocked) or `manual` (only between `kanban-md edit ID --timer start` and `--timer stop`; leaving the status stops it). Tasks store `time_spent` per status and `timer_started`. Cards show the tracked time instead of the time since the last update (`▸` = timer running; a parent shows the sum of its subtasks), the detail view breaks it down per status, and a `project time` line above the status bar totals all tasks.
-> - **Parent groups.** `tui.parent_label: "wave-#{id}"` colors the border of every subtask (and its parent) per parent and puts the label in the top border.
+> - **Work time tracking.** Per status `time_tracking: auto` (the timer runs for the whole stay; paused while the task is blocked) or `manual` (only between `kanban-md edit ID --timer start` and `--timer stop`; leaving the status stops it). Tasks store `time_spent` per status and `timer_started`. Cards show the tracked time instead of the time since the last update (`▸` = timer running; a parent shows the sum of its subtasks), the detail view breaks it down per status, and a framed `project time` line above the status bar totals all tasks.
+> - **Parent groups.** `tui.parent_label` (e.g. `"{title}"` or `"wave-#{id}"`: parent title / ID) colors the border of every subtask (and its parent) per parent and puts the label in the top border.
 >
 > ```sh
 > kanban-md config set statuses.in-progress.time_tracking auto
 > kanban-md config set statuses.review.time_tracking manual
 > kanban-md config set statuses.todo.show_duration false
-> kanban-md config set tui.parent_label 'wave-#{id}'
+> kanban-md config set tui.parent_label '{title}'
 > ```
 
 An agents-first file-based Kanban. Built for multi-agent workflows to allow AI agents work in parallel without clashing. Ultra-fast single binary CLI. Agent skills included. Lean and future-proof: no database, no server, no SaaS — just files.

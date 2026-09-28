@@ -68,7 +68,8 @@ type TUIConfig struct {
 	NarrowThreshold int `yaml:"narrow_threshold,omitempty"`
 	// ParentLabel groups subtasks visually: when set, a task with a parent (and
 	// the parent itself) gets a border colored per parent and this label, with
-	// "{id}" replaced by the parent ID, in the top border. Empty = off.
+	// "{id}" and "{title}" replaced by the parent's ID and title, in the top
+	// border. Empty = off.
 	ParentLabel string `yaml:"parent_label,omitempty"`
 }
 

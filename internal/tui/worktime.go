@@ -11,9 +11,9 @@ import (
 	"github.com/antopolskiy/kanban-md/internal/task"
 )
 
-// timeStatsChrome is the project time line above the status bar, shown when
-// any status tracks time.
-const timeStatsChrome = 1
+// timeStatsChrome is the framed project time line above the status bar,
+// shown when any status tracks time: border, line, border.
+const timeStatsChrome = 3
 
 // runningMark prefixes a card's work time while a timer runs.
 const runningMark = "▸"
@@ -109,8 +109,8 @@ func (b *Board) renderTimeStats() string {
 			total += d
 		}
 	}
+	inner := b.width - 4 //nolint:mnd // border + padding on both sides
 	var sb strings.Builder
-	sb.WriteString(" ")
 	sb.WriteString(timeStatsLabelStyle.Render("project time"))
 	sb.WriteString(statusBarStyle.Render("  total "))
 	sb.WriteString(timeStatsValueStyle.Render(workDuration(total)))
@@ -119,16 +119,20 @@ func (b *Board) renderTimeStats() string {
 		sb.WriteString(timeStatsValueStyle.Render(workDuration(byStatus[s])))
 	}
 	line := sb.String()
-	if lipgloss.Width(line) > b.width {
-		plain := fmt.Sprintf(" project time  total %s%s", workDuration(total), b.statusBreakdown(byStatus, " ·  ", "  ·  ", ""))
-		return statusBarStyle.Render(truncate(plain, b.width))
+	if lipgloss.Width(line) > inner {
+		plain := fmt.Sprintf("project time  total %s%s", workDuration(total), b.statusBreakdown(byStatus, " ·  ", "  ·  ", ""))
+		line = statusBarStyle.Render(truncate(plain, inner))
 	}
-	return line
+	return timeStatsBoxStyle.Width(max(b.width-2, 0)).Render(line) //nolint:mnd // border width
 }
 
 var (
 	timeStatsLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
 	timeStatsValueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	timeStatsBoxStyle   = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("238")).
+				Padding(0, 1)
 )
 
 // workDuration formats tracked time: "<1m", "45m", "2h05m", "31h40m".
@@ -177,8 +181,20 @@ func (b *Board) renderGroupCard(t *task.Task, group int, active bool, content st
 		Padding(0, 1).
 		Width(width - 2). //nolint:mnd // border width
 		Render(content)
-	label := strings.ReplaceAll(b.cfg.TUI.ParentLabel, "{id}", strconv.Itoa(group))
+	label := b.groupLabel(group)
 	return groupTopBorder(border, label, width, borderColor, color) + "\n" + body
+}
+
+// groupLabel expands tui.parent_label for a parent: {id} and {title}.
+func (b *Board) groupLabel(parentID int) string {
+	title := ""
+	for _, t := range b.allTasks {
+		if t.ID == parentID {
+			title = t.Title
+			break
+		}
+	}
+	return strings.NewReplacer("{id}", strconv.Itoa(parentID), "{title}", title).Replace(b.cfg.TUI.ParentLabel)
 }
 
 // groupTopBorder draws "╭─ label ────╮" exactly width cells wide.
